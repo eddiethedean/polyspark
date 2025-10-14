@@ -112,7 +112,9 @@ class TestDataclassToDdlSchema:
             address: Address
 
         schema = dataclass_to_ddl_schema(User)
-        expected = "struct<id:long,name:string,address:struct<street:string,city:string,zipcode:string>>"
+        expected = (
+            "struct<id:long,name:string,address:struct<street:string,city:string,zipcode:string>>"
+        )
         assert schema == expected
 
 
@@ -275,4 +277,3 @@ class TestDdlSchemaWithoutPyspark:
         schema = export_ddl_schema(Product)
         expected = "struct<id:long,name:string,tags:array<string>,prices:map<string,double>,metadata:map<string,array<string>>>"
         assert schema == expected
-

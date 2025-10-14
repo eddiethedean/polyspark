@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from polyspark import SparkFactory, export_ddl_schema, infer_schema, is_pyspark_available
+from polyspark.exceptions import PySparkNotAvailableError
 
 
 @dataclass
@@ -42,9 +43,8 @@ class TestWithoutPyspark:
         class ModelFactory(SparkFactory[SimpleModel]):
             __model__ = SimpleModel
 
-        # Without PySpark, it will try to call createDataFrame on None
-        # This should raise AttributeError since None doesn't have createDataFrame
-        with pytest.raises(AttributeError):
+        # Without PySpark, it should raise PySparkNotAvailableError
+        with pytest.raises(PySparkNotAvailableError):
             ModelFactory.build_dataframe(None, size=10)
 
     @patch("polyspark.factory.is_pyspark_available", return_value=False)
@@ -56,9 +56,8 @@ class TestWithoutPyspark:
 
         dicts = ModelFactory.build_dicts(size=5)
 
-        # Without PySpark, it will try to call createDataFrame on None
-        # This should raise AttributeError since None doesn't have createDataFrame
-        with pytest.raises(AttributeError):
+        # Without PySpark, it should raise PySparkNotAvailableError
+        with pytest.raises(PySparkNotAvailableError):
             ModelFactory.create_dataframe_from_dicts(None, dicts)
 
     @patch("polyspark.schema.is_pyspark_available", return_value=False)
@@ -86,5 +85,7 @@ class TestWithoutPyspark:
         assert isinstance(schema, str)
 
         # Invalid column name should raise error
-        with pytest.raises(Exception, match="Column 'invalid_field' not found"):  # Should raise SchemaInferenceError
+        with pytest.raises(
+            Exception, match="Column 'invalid_field' not found"
+        ):  # Should raise SchemaInferenceError
             infer_schema(SimpleModel, schema=["id", "name", "invalid_field"])

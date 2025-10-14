@@ -182,13 +182,18 @@ class TestSchemaCompatibilityWithMockSpark:
 
     def test_schema_inference_works_with_mockspark(self, mock_spark):
         """Test that schema inference works with mock-spark."""
-        from polyspark import infer_schema
+        from polyspark import infer_schema, is_pyspark_available
 
-        # Schema inference should work without PySpark
+        # Schema inference should work with mock-spark
         schema = infer_schema(SimpleUser)
 
-        # Should be a string (DDL format) when PySpark is not available
-        assert isinstance(schema, str)
+        # Schema can be either a StructType (if PySpark is available) or a string (DDL format)
+        if is_pyspark_available():
+            from pyspark.sql import types as T
+
+            assert isinstance(schema, T.StructType)
+        else:
+            assert isinstance(schema, str)
 
         # Create DataFrame with the schema
         class UserFactory(SparkFactory[SimpleUser]):
@@ -210,4 +215,3 @@ class TestSchemaCompatibilityWithMockSpark:
 
         df = UserFactory.build_dataframe(mock_spark, size=5)
         assert df.count() == 5
-

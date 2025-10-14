@@ -7,4 +7,3 @@ This directory contains tests that verify polyspark works correctly with:
 
 These tests are run in separate environments with the respective dependencies installed.
 """
-

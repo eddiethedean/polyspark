@@ -226,4 +226,3 @@ class TestSchemaInferenceWithPySpark:
         # Find nickname field and check if it's nullable
         nickname_field = next((f for f in schema.fields if f.name == "nickname"), None)
         assert nickname_field is not None
-
