@@ -441,11 +441,11 @@ def infer_schema(
             # DDL format: "struct<field1:type1,field2:type2>"
             schema_str = ddl_schema.replace("struct<", "").replace(">", "")
             field_names = {field.split(":")[0] for field in schema_str.split(",")}
-            
+
             for col_name in schema:
                 if col_name not in field_names:
                     raise SchemaInferenceError(f"Column '{col_name}' not found in model {model}")
-        
+
         # Return DDL schema string when PySpark is unavailable
         return infer_ddl_schema(model)
 

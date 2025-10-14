@@ -4,7 +4,11 @@ These tests verify that polyspark works correctly with Pydantic models.
 This file should be run in an environment with pydantic installed.
 """
 
+from typing import List, Optional
+
 import pytest
+
+from polyspark import SparkFactory, spark_factory
 
 try:
     from pydantic import BaseModel, Field
@@ -14,10 +18,6 @@ except ImportError:
     PYDANTIC_AVAILABLE = False
 
 pytestmark = pytest.mark.skipif(not PYDANTIC_AVAILABLE, reason="Pydantic not installed")
-
-from typing import List, Optional
-
-from polyspark import SparkFactory, spark_factory
 
 
 class PydanticUser(BaseModel):
@@ -135,7 +135,6 @@ class TestPydanticWithFactory:
 
     def test_pydantic_factory_with_validation(self):
         """Test factory respects Pydantic validation."""
-        import pytest
 
         class ProductFactory(SparkFactory[PydanticProduct]):
             __model__ = PydanticProduct

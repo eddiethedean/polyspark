@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pytest
 
 from polyspark import SparkFactory, export_ddl_schema, infer_schema, is_pyspark_available
-from polyspark.exceptions import PySparkNotAvailableError
 
 
 @dataclass
@@ -87,5 +86,5 @@ class TestWithoutPyspark:
         assert isinstance(schema, str)
 
         # Invalid column name should raise error
-        with pytest.raises(Exception):  # Should raise SchemaInferenceError
+        with pytest.raises(Exception, match="Column 'invalid_field' not found"):  # Should raise SchemaInferenceError
             infer_schema(SimpleModel, schema=["id", "name", "invalid_field"])

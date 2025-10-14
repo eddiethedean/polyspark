@@ -4,7 +4,12 @@ These tests verify that polyspark works correctly with the pyspark package.
 This file should be run in an environment with pyspark installed.
 """
 
+from dataclasses import dataclass
+from typing import List, Optional
+
 import pytest
+
+from polyspark import SparkFactory, build_spark_dataframe, spark_factory
 
 try:
     from pyspark.sql import SparkSession
@@ -15,11 +20,6 @@ except ImportError:
     PYSPARK_AVAILABLE = False
 
 pytestmark = pytest.mark.skipif(not PYSPARK_AVAILABLE, reason="PySpark not installed")
-
-from dataclasses import dataclass
-from typing import List, Optional
-
-from polyspark import SparkFactory, build_spark_dataframe, spark_factory
 
 
 @dataclass

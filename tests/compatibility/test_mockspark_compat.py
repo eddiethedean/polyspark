@@ -7,7 +7,12 @@ Note: mock-spark is a package that provides mock implementations of PySpark
 components for testing purposes.
 """
 
+from dataclasses import dataclass
+from typing import Optional
+
 import pytest
+
+from polyspark import SparkFactory, build_spark_dataframe, spark_factory
 
 try:
     import mock_spark
@@ -24,11 +29,6 @@ except ImportError:
         MOCKSPARK_AVAILABLE = False
 
 pytestmark = pytest.mark.skipif(not MOCKSPARK_AVAILABLE, reason="mock-spark not installed")
-
-from dataclasses import dataclass
-from typing import List, Optional
-
-from polyspark import SparkFactory, build_spark_dataframe, spark_factory
 
 
 @dataclass
