@@ -10,7 +10,7 @@ from polyfactory.factories import DataclassFactory
 try:
     from pydantic import BaseModel
 except ImportError:
-    BaseModel = None  # type: ignore[assignment, misc]
+    BaseModel = None
 
 from polyspark.exceptions import PySparkNotAvailableError
 from polyspark.protocols import (
