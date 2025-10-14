@@ -34,29 +34,70 @@ pip install polyspark[dev]
 
 ## Quick Start
 
+### The Easy Way (Recommended)
+
+Use the `@spark_factory` decorator - no need for a separate factory class!
+
 ```python
 from dataclasses import dataclass
-from polyspark import SparkFactory
+from polyspark import spark_factory
 from pyspark.sql import SparkSession
 
-# Define your data model
+# Define your data model with decorator
+@spark_factory
 @dataclass
 class User:
     id: int
     name: str
     email: str
 
-# Create a factory
-class UserFactory(SparkFactory[User]):
-    __model__ = User
-
-# Generate a DataFrame
+# Generate a DataFrame - use methods directly on your class!
 spark = SparkSession.builder.getOrCreate()
-df = UserFactory.build_dataframe(spark, size=100)
+df = User.build_dataframe(spark, size=100)
 df.show()
 ```
 
+### Traditional Way (For Advanced Use Cases)
+
+You can also create a separate factory class if you need more control:
+
+```python
+from polyspark import SparkFactory
+
+class UserFactory(SparkFactory[User]):
+    __model__ = User
+
+df = UserFactory.build_dataframe(spark, size=100)
+```
+
 ## Usage
+
+### Decorator Pattern (Recommended)
+
+The `@spark_factory` decorator is the simplest way to use polyspark. It adds factory methods directly to your model class:
+
+```python
+from dataclasses import dataclass
+from polyspark import spark_factory
+
+@spark_factory
+@dataclass
+class Product:
+    product_id: int
+    name: str
+    price: float
+    in_stock: bool
+
+# Use methods directly on the class!
+df = Product.build_dataframe(spark, size=50)
+dicts = Product.build_dicts(size=100)  # No PySpark needed
+```
+
+**Benefits:**
+- ✅ Single decorator instead of separate factory class
+- ✅ Methods live on your model where they're discoverable
+- ✅ Works with dataclasses, Pydantic, and TypedDicts
+- ✅ Cleaner, more Pythonic code
 
 ### Basic Usage
 

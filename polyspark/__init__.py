@@ -5,7 +5,7 @@ development using the polyfactory library. It supports dataclasses, Pydantic
 models, and TypedDicts without requiring PySpark as a hard dependency.
 """
 
-from polyspark.factory import SparkFactory, build_spark_dataframe
+from polyspark.factory import SparkFactory, build_spark_dataframe, spark_factory
 from polyspark.schema import (
     dataclass_to_struct_type,
     infer_schema,
@@ -27,6 +27,7 @@ __all__ = [
     # Main factory
     "SparkFactory",
     "build_spark_dataframe",
+    "spark_factory",
     # Schema utilities
     "dataclass_to_struct_type",
     "infer_schema",

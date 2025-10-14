@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`@spark_factory` decorator** - Simplified API that adds factory methods directly to model classes
+  - No need to create separate factory classes
+  - Methods (`build_dataframe`, `build_dicts`, `create_dataframe_from_dicts`) added directly to decorated class
+  - Works with dataclasses, Pydantic models, and TypedDicts
+  - Fully backward compatible with existing `SparkFactory` approach
+- Comprehensive decorator examples in `examples/decorator_usage.py`
+- Decorator test suite in `tests/test_decorator.py`
+
+### Changed
+- Updated documentation to feature `@spark_factory` decorator as the recommended approach
+- README.md now shows decorator usage first in Quick Start
+- QUICKSTART.md updated with decorator-first examples
+
 ## [0.1.0] - 2025-10-13
 
 ### Added

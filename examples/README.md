@@ -18,7 +18,22 @@ pip install pydantic
 
 ## Examples
 
-### 1. Basic Usage (`basic_usage.py`)
+### 1. Decorator Usage (`decorator_usage.py`) - **START HERE!**
+
+The easiest way to use polyspark - just add one decorator!
+- Simple decorator usage (no factory class needed)
+- Comparison with traditional approach
+- Complex types with decorator
+- Pydantic models with decorator
+- Multiple decorated classes
+- Testing workflows
+
+Run:
+```bash
+python examples/decorator_usage.py
+```
+
+### 2. Basic Usage (`basic_usage.py`)
 
 Demonstrates the fundamental usage of polyspark:
 - Creating a factory from a dataclass
@@ -31,7 +46,7 @@ Run:
 python examples/basic_usage.py
 ```
 
-### 2. Pydantic Models (`pydantic_models.py`)
+### 3. Pydantic Models (`pydantic_models.py`)
 
 Shows how to use polyspark with Pydantic models:
 - Using Pydantic v2 models
@@ -44,7 +59,7 @@ Run:
 python examples/pydantic_models.py
 ```
 
-### 3. Complex Types (`complex_types.py`)
+### 4. Complex Types (`complex_types.py`)
 
 Demonstrates support for complex PySpark types:
 - Nested structs (dataclasses within dataclasses)
@@ -58,7 +73,7 @@ Run:
 python examples/complex_types.py
 ```
 
-### 4. Direct Schema (`direct_schema.py`)
+### 5. Direct Schema (`direct_schema.py`)
 
 Shows how to work with PySpark schemas directly:
 - Schema inference from type hints
@@ -74,7 +89,22 @@ python examples/direct_schema.py
 
 ## Common Patterns
 
-### Pattern 1: Test Data Generation
+### Pattern 1: Simple Decorator (Recommended)
+
+```python
+from polyspark import spark_factory
+
+@spark_factory
+@dataclass
+class TestData:
+    id: int
+    value: str
+
+# Use directly!
+test_df = TestData.build_dataframe(spark, size=100)
+```
+
+### Pattern 2: Test Data Generation
 
 ```python
 from dataclasses import dataclass
@@ -95,7 +125,7 @@ def test_my_spark_job(spark):
     assert result_df.count() > 0
 ```
 
-### Pattern 2: Development Workflow
+### Pattern 3: Development Workflow
 
 ```python
 # Generate sample data for development
@@ -112,7 +142,7 @@ with open('sample_users.json') as f:
 df = UserFactory.create_dataframe_from_dicts(spark, data)
 ```
 
-### Pattern 3: Schema Validation
+### Pattern 4: Schema Validation
 
 ```python
 from pyspark.sql.types import StructType, StructField, IntegerType, StringType

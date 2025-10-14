@@ -35,7 +35,7 @@ class TestWithoutPyspark:
         assert all(isinstance(d, dict) for d in dicts)
         assert all(set(d.keys()) == {"id", "name"} for d in dicts)
     
-    @patch('polyspark.protocols.is_pyspark_available', return_value=False)
+    @patch('polyspark.factory.is_pyspark_available', return_value=False)
     def test_build_dataframe_raises_without_pyspark(self, mock_check):
         """build_dataframe should raise clear error without PySpark."""
         class ModelFactory(SparkFactory[SimpleModel]):
@@ -47,7 +47,7 @@ class TestWithoutPyspark:
         assert "PySpark is required" in str(exc_info.value)
         assert "pip install pyspark" in str(exc_info.value)
     
-    @patch('polyspark.protocols.is_pyspark_available', return_value=False)
+    @patch('polyspark.factory.is_pyspark_available', return_value=False)
     def test_create_dataframe_from_dicts_raises_without_pyspark(self, mock_check):
         """create_dataframe_from_dicts should raise clear error without PySpark."""
         class ModelFactory(SparkFactory[SimpleModel]):

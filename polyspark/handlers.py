@@ -2,10 +2,8 @@
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional
 import random
-
-from polyfactory.value_generators import handle_constrained_list, handle_constrained_mapping
 
 
 def handle_array_type(element_handler: Callable[[], Any], min_items: int = 0, max_items: int = 5) -> List[Any]:

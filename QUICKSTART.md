@@ -35,10 +35,43 @@ This will check that everything is installed correctly.
 
 ## Your First DataFrame
 
-### Step 1: Define Your Model
+### The Easy Way (Recommended)
+
+Just add one decorator to your model - that's it!
 
 ```python
 from dataclasses import dataclass
+from polyspark import spark_factory
+from pyspark.sql import SparkSession
+
+# Step 1: Add @spark_factory decorator to your model
+@spark_factory
+@dataclass
+class User:
+    id: int
+    name: str
+    email: str
+    age: int
+
+# Step 2: Generate DataFrame - use methods directly on your class!
+spark = SparkSession.builder \
+    .appName("my-app") \
+    .master("local[*]") \
+    .getOrCreate()
+
+df = User.build_dataframe(spark, size=100)
+
+# Use it!
+df.show(10)
+df.printSchema()
+```
+
+### Traditional Way (Optional)
+
+If you prefer separate factory classes:
+
+```python
+from polyspark import SparkFactory
 
 @dataclass
 class User:
@@ -46,45 +79,39 @@ class User:
     name: str
     email: str
     age: int
-```
-
-### Step 2: Create a Factory
-
-```python
-from polyspark import SparkFactory
 
 class UserFactory(SparkFactory[User]):
     __model__ = User
-```
 
-### Step 3: Generate Data
-
-```python
-from pyspark.sql import SparkSession
-
-# Create Spark session
-spark = SparkSession.builder \
-    .appName("my-app") \
-    .master("local[*]") \
-    .getOrCreate()
-
-# Generate DataFrame with 100 users
 df = UserFactory.build_dataframe(spark, size=100)
-
-# Use it!
-df.show(10)
-df.printSchema()
 ```
 
 ## Quick Examples
+
+### Using the Decorator
+
+```python
+@spark_factory
+@dataclass
+class Product:
+    id: int
+    name: str
+    price: float
+
+# Generate DataFrame
+df = Product.build_dataframe(spark, size=50)
+
+# Generate dicts (no PySpark needed)
+dicts = Product.build_dicts(size=100)
+```
 
 ### Without PySpark
 
 Generate data without needing PySpark installed:
 
 ```python
-# Generate as dictionaries
-users = UserFactory.build_dicts(size=50)
+# Generate as dictionaries (works with decorator too!)
+users = User.build_dicts(size=50)
 
 # Use the dictionaries
 for user in users[:5]:
