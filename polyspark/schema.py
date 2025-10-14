@@ -54,6 +54,177 @@ def unwrap_optional(type_hint: Type) -> Type:
     return type_hint
 
 
+def python_type_to_ddl_type(python_type: Type) -> str:
+    """Convert a Python type to a DDL type string.
+
+    Args:
+        python_type: The Python type to convert.
+
+    Returns:
+        A DDL type string like "string", "long", "double", etc.
+
+    Raises:
+        UnsupportedTypeError: If the type cannot be converted.
+    """
+    # Handle Optional types
+    if is_optional(python_type):
+        python_type = unwrap_optional(python_type)
+
+    origin = get_origin(python_type)
+    args = get_args(python_type)
+
+    # Handle basic types
+    type_mapping = {
+        str: "string",
+        int: "long",
+        float: "double",
+        bool: "boolean",
+        bytes: "binary",
+        bytearray: "binary",
+        date: "date",
+        datetime: "timestamp",
+        Decimal: "decimal(10,0)",
+    }
+
+    if python_type in type_mapping:
+        return type_mapping[python_type]
+
+    # Handle List/list -> array<T>
+    if origin in (list, List):
+        if not args:
+            raise SchemaInferenceError(f"Cannot infer array element type from {python_type}")
+        element_type = python_type_to_ddl_type(args[0])
+        return f"array<{element_type}>"
+
+    # Handle Dict/dict -> map<K,V>
+    if origin in (dict, Dict):
+        if not args or len(args) < 2:
+            raise SchemaInferenceError(f"Cannot infer map types from {python_type}")
+        key_type = python_type_to_ddl_type(args[0])
+        value_type = python_type_to_ddl_type(args[1])
+        return f"map<{key_type},{value_type}>"
+
+    # Handle dataclasses and Pydantic models -> struct<...>
+    if is_dataclass(python_type):
+        return dataclass_to_ddl_schema(python_type)
+
+    # Try Pydantic model
+    if hasattr(python_type, "model_fields"):
+        return pydantic_to_ddl_schema(python_type)
+
+    # Try TypedDict
+    if hasattr(python_type, "__annotations__"):
+        try:
+            return typed_dict_to_ddl_schema(python_type)
+        except Exception:
+            pass
+
+    raise UnsupportedTypeError(f"Cannot convert type {python_type} to DDL type")
+
+
+def dataclass_to_ddl_schema(dataclass_type: Type) -> str:
+    """Convert a dataclass to a DDL schema string.
+
+    Args:
+        dataclass_type: The dataclass type to convert.
+
+    Returns:
+        A DDL schema string like "id long, name string, email string".
+    """
+    if not is_dataclass(dataclass_type):
+        raise ValueError(f"{dataclass_type} is not a dataclass")
+
+    fields = []
+    type_hints = get_type_hints(dataclass_type)
+
+    for field in dataclass_fields(dataclass_type):
+        field_type = type_hints.get(field.name, field.type)
+
+        try:
+            ddl_type = python_type_to_ddl_type(field_type)
+            fields.append(f"{field.name}:{ddl_type}")
+        except UnsupportedTypeError as e:
+            raise SchemaInferenceError(f"Cannot infer type for field {field.name}: {e}") from e
+
+    return "struct<" + ",".join(fields) + ">"
+
+
+def pydantic_to_ddl_schema(model_type: Type) -> str:
+    """Convert a Pydantic model to a DDL schema string.
+
+    Args:
+        model_type: The Pydantic model type to convert.
+
+    Returns:
+        A DDL schema string.
+    """
+    if not hasattr(model_type, "model_fields"):
+        raise ValueError(f"{model_type} is not a Pydantic v2 model")
+
+    fields = []
+
+    for field_name, field_info in model_type.model_fields.items():
+        field_type = field_info.annotation
+
+        try:
+            ddl_type = python_type_to_ddl_type(field_type)
+            fields.append(f"{field_name}:{ddl_type}")
+        except UnsupportedTypeError as e:
+            raise SchemaInferenceError(f"Cannot infer type for field {field_name}: {e}") from e
+
+    return "struct<" + ",".join(fields) + ">"
+
+
+def typed_dict_to_ddl_schema(typed_dict_type: Type) -> str:
+    """Convert a TypedDict to a DDL schema string.
+
+    Args:
+        typed_dict_type: The TypedDict type to convert.
+
+    Returns:
+        A DDL schema string.
+    """
+    if not hasattr(typed_dict_type, "__annotations__"):
+        raise ValueError(f"{typed_dict_type} does not have type annotations")
+
+    fields = []
+
+    for field_name, field_type in typed_dict_type.__annotations__.items():
+        try:
+            ddl_type = python_type_to_ddl_type(field_type)
+            fields.append(f"{field_name}:{ddl_type}")
+        except UnsupportedTypeError as e:
+            raise SchemaInferenceError(f"Cannot infer type for field {field_name}: {e}") from e
+
+    return "struct<" + ",".join(fields) + ">"
+
+
+def infer_ddl_schema(model: Type) -> str:
+    """Infer a DDL schema string from a model type.
+
+    Args:
+        model: The model type (dataclass, Pydantic, TypedDict).
+
+    Returns:
+        A DDL schema string.
+
+    Raises:
+        SchemaInferenceError: If schema cannot be inferred.
+    """
+    # Infer schema from model
+    if is_dataclass(model):
+        return dataclass_to_ddl_schema(model)
+    elif hasattr(model, "model_fields"):
+        return pydantic_to_ddl_schema(model)
+    elif hasattr(model, "__annotations__"):
+        try:
+            return typed_dict_to_ddl_schema(model)
+        except Exception as e:
+            raise SchemaInferenceError(f"Cannot infer schema from {model}: {e}") from e
+    else:
+        raise SchemaInferenceError(f"Cannot infer schema from {model}")
+
+
 def python_type_to_spark_type(python_type: Type, nullable: bool = True) -> Any:
     """Convert a Python type to a PySpark DataType.
 
@@ -255,15 +426,28 @@ def infer_schema(
                 If provided as list of strings, column names are validated against model.
 
     Returns:
-        A PySpark StructType instance.
+        A PySpark StructType instance or DDL schema string (if PySpark is unavailable).
 
     Raises:
         SchemaInferenceError: If schema cannot be inferred.
     """
+    # If PySpark is not available, return DDL schema string
     if not is_pyspark_available():
-        from polyspark.exceptions import PySparkNotAvailableError
-
-        raise PySparkNotAvailableError()
+        # If explicit schema provided as list of strings, validate column names
+        if schema is not None and isinstance(schema, list):
+            # Infer DDL schema to validate column names
+            ddl_schema = infer_ddl_schema(model)
+            # Extract field names from DDL schema (simple parsing)
+            # DDL format: "struct<field1:type1,field2:type2>"
+            schema_str = ddl_schema.replace("struct<", "").replace(">", "")
+            field_names = {field.split(":")[0] for field in schema_str.split(",")}
+            
+            for col_name in schema:
+                if col_name not in field_names:
+                    raise SchemaInferenceError(f"Column '{col_name}' not found in model {model}")
+        
+        # Return DDL schema string when PySpark is unavailable
+        return infer_ddl_schema(model)
 
     pyspark_types = get_pyspark_types()
     assert pyspark_types is not None  # Type guard for mypy
@@ -293,3 +477,67 @@ def infer_schema(
                 raise SchemaInferenceError(f"Column '{col_name}' not found in model {model}")
 
     return inferred_schema
+
+
+def export_ddl_schema(model: Type) -> str:
+    """Export a model schema as a DDL string.
+
+    This function works without PySpark installed and can be used to
+    generate schema strings for sharing or storage.
+
+    Args:
+        model: The model type (dataclass, Pydantic, TypedDict).
+
+    Returns:
+        A DDL schema string.
+
+    Raises:
+        SchemaInferenceError: If schema cannot be inferred.
+
+    Example:
+        ```python
+        from dataclasses import dataclass
+        from polyspark.schema import export_ddl_schema
+
+        @dataclass
+        class User:
+            id: int
+            name: str
+            email: Optional[str]
+
+        schema = export_ddl_schema(User)
+        print(schema)  # "struct<id:long,name:string,email:string>"
+        ```
+    """
+    return infer_ddl_schema(model)
+
+
+def save_schema_ddl(model: Type, filepath: str) -> None:
+    """Save a model schema as a DDL string to a file.
+
+    This function works without PySpark installed.
+
+    Args:
+        model: The model type (dataclass, Pydantic, TypedDict).
+        filepath: Path to the file where the schema will be saved.
+
+    Raises:
+        SchemaInferenceError: If schema cannot be inferred.
+
+    Example:
+        ```python
+        from dataclasses import dataclass
+        from polyspark.schema import save_schema_ddl
+
+        @dataclass
+        class Product:
+            id: int
+            name: str
+            price: float
+
+        save_schema_ddl(Product, "product_schema.ddl")
+        ```
+    """
+    ddl_schema = infer_ddl_schema(model)
+    with open(filepath, "w") as f:
+        f.write(ddl_schema)

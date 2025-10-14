@@ -6,7 +6,11 @@ from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
 from polyfactory.factories import DataclassFactory
-from pydantic import BaseModel
+
+try:
+    from pydantic import BaseModel
+except ImportError:
+    BaseModel = None  # type: ignore[assignment, misc]
 
 from polyspark.exceptions import PySparkNotAvailableError
 from polyspark.protocols import (
@@ -73,22 +77,26 @@ class SparkFactory(DataclassFactory[T], ABC):
             A PySpark DataFrame with generated data.
 
         Raises:
-            PySparkNotAvailableError: If PySpark is not installed.
+            PySparkNotAvailableError: If PySpark is not installed and schema is a StructType.
         """
-        if not is_pyspark_available():
+        # Infer schema first (before generating data, so error is raised early)
+        inferred_schema = infer_schema(cls.__model__, schema)
+
+        # If schema is a StructType but PySpark is not available, raise error
+        # (This means user explicitly provided a StructType but PySpark isn't installed)
+        if not is_pyspark_available() and not isinstance(inferred_schema, str):
             raise PySparkNotAvailableError(
-                "PySpark is required to build DataFrames. "
+                "PySpark is required when using StructType schemas. "
                 "Install it with: pip install pyspark\n"
                 "Or use build_dicts() to generate data without PySpark."
             )
-
-        # Infer schema first (before generating data, so error is raised early)
-        inferred_schema = infer_schema(cls.__model__, schema)
 
         # Generate data as list of dictionaries
         data = cls.build_dicts(size=size, **kwargs)
 
         # Create DataFrame
+        # Note: If PySpark is not available, inferred_schema will be a DDL string
+        # which works with mock-spark and other PySpark-compatible libraries
         df = spark.createDataFrame(data, schema=inferred_schema)
         return df
 
@@ -117,7 +125,7 @@ class SparkFactory(DataclassFactory[T], ABC):
         for instance in instances:
             if is_dataclass(instance):
                 dicts.append(asdict(instance))  # type: ignore[arg-type]
-            elif isinstance(instance, BaseModel):
+            elif BaseModel is not None and isinstance(instance, BaseModel):
                 dicts.append(instance.model_dump())
             elif isinstance(instance, dict):
                 dicts.append(instance)
@@ -151,12 +159,18 @@ class SparkFactory(DataclassFactory[T], ABC):
             A PySpark DataFrame.
 
         Raises:
-            PySparkNotAvailableError: If PySpark is not installed.
+            PySparkNotAvailableError: If PySpark is not installed and schema is a StructType.
         """
-        if not is_pyspark_available():
-            raise PySparkNotAvailableError()
-
         inferred_schema = infer_schema(cls.__model__, schema)
+
+        # If schema is a StructType but PySpark is not available, raise error
+        if not is_pyspark_available() and not isinstance(inferred_schema, str):
+            raise PySparkNotAvailableError(
+                "PySpark is required when using StructType schemas. "
+                "Install it with: pip install pyspark\n"
+                "Or use build_dicts() to generate data without PySpark."
+            )
+
         return spark.createDataFrame(data, schema=inferred_schema)
 
 
@@ -235,7 +249,7 @@ def spark_factory(cls: Type[T]) -> Type[T]:
         ```
     """
     # Determine the appropriate base factory and create a custom factory
-    if isinstance(cls, type) and issubclass(cls, BaseModel):
+    if BaseModel is not None and isinstance(cls, type) and issubclass(cls, BaseModel):
         # Pydantic model - we need to create a special factory that inherits from both
         try:
             from polyfactory.factories.pydantic_factory import ModelFactory as PydanticModelFactory
