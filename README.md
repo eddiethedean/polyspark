@@ -1,26 +1,51 @@
 # Polyspark
 
-Generate PySpark DataFrames using [polyfactory](https://github.com/litestar-org/polyfactory) for testing and developing PySpark workflows.
+**Generate type-safe PySpark DataFrames effortlessly using [polyfactory](https://github.com/litestar-org/polyfactory)**
 
 [![Python Version](https://img.shields.io/pypi/pyversions/polyspark)](https://pypi.org/project/polyspark/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/polyspark)](https://pypi.org/project/polyspark/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/eddiethedean/polyspark/blob/main/LICENSE)
+[![Tests](https://github.com/eddiethedean/polyspark/workflows/Tests/badge.svg)](https://github.com/eddiethedean/polyspark/actions)
 
-## Features
+---
 
-- 🏭 **Factory-based generation**: Leverage polyfactory's powerful factory pattern
-- 🎯 **Type-safe**: Full support for dataclasses, Pydantic models, and TypedDicts
-- 🔌 **No hard dependency**: PySpark is optional - generate data without it installed
-- 🌳 **Complex types**: Support for arrays, maps, nested structs, and more
-- 🎨 **Dual schema support**: Use Python type hints or PySpark schema objects
-- 🚀 **Easy to use**: Simple API with sensible defaults
+## 🎯 Why Polyspark?
 
-## Installation
+Creating test data for PySpark applications is tedious. Polyspark makes it **effortless** by generating realistic test DataFrames from your Python data models - with **automatic schema inference** that prevents common pitfalls.
+
+```python
+from dataclasses import dataclass
+from polyspark import spark_factory
+
+@spark_factory
+@dataclass
+class User:
+    id: int
+    name: str
+    email: str
+
+# That's it! Generate 1000 rows instantly:
+df = User.build_dataframe(spark, size=1000)
+```
+
+## ✨ Key Features
+
+- 🏭 **Factory Pattern**: Leverage polyfactory's powerful data generation
+- 🎯 **Type-Safe Schema Inference**: Your Python types become PySpark schemas automatically
+- 🛡️ **Robust Null Handling**: Schemas inferred from types prevent DataFrame failures with null columns
+- 🔌 **Zero Hard Dependencies**: PySpark is optional - generate data without it
+- 🌳 **Complex Types**: Full support for nested structs, arrays, maps, and unions
+- 🎨 **Flexible Models**: Works with dataclasses, Pydantic models, and TypedDicts
+- 🚀 **Simple API**: One decorator and you're done
+- 📦 **Production Ready**: Comprehensive test coverage and CI/CD
+
+## 📦 Installation
 
 ```bash
 pip install polyspark
 ```
 
-Polyspark does **not** require PySpark as a dependency. Install PySpark separately when you need it:
+Polyspark keeps PySpark **optional** - install it separately when needed:
 
 ```bash
 pip install pyspark
@@ -29,185 +54,172 @@ pip install pyspark
 For development with all optional dependencies:
 
 ```bash
-pip install polyspark[dev]
+pip install "polyspark[dev]"
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### The Easy Way (Recommended)
+### The Modern Way (Recommended)
 
-Use the `@spark_factory` decorator - no need for a separate factory class!
+Use the `@spark_factory` decorator to add DataFrame generation methods directly to your model:
 
 ```python
 from dataclasses import dataclass
+from typing import Optional
 from polyspark import spark_factory
 from pyspark.sql import SparkSession
 
-# Define your data model with decorator
-@spark_factory
-@dataclass
-class User:
-    id: int
-    name: str
-    email: str
-
-# Generate a DataFrame - use methods directly on your class!
-spark = SparkSession.builder.getOrCreate()
-df = User.build_dataframe(spark, size=100)
-df.show()
-```
-
-### Traditional Way (For Advanced Use Cases)
-
-You can also create a separate factory class if you need more control:
-
-```python
-from polyspark import SparkFactory
-
-class UserFactory(SparkFactory[User]):
-    __model__ = User
-
-df = UserFactory.build_dataframe(spark, size=100)
-```
-
-## Usage
-
-### Decorator Pattern (Recommended)
-
-The `@spark_factory` decorator is the simplest way to use polyspark. It adds factory methods directly to your model class:
-
-```python
-from dataclasses import dataclass
-from polyspark import spark_factory
-
 @spark_factory
 @dataclass
 class Product:
     product_id: int
     name: str
     price: float
-    in_stock: bool
+    description: Optional[str] = None  # Automatically nullable in schema
+    in_stock: bool = True
 
-# Use methods directly on the class!
-df = Product.build_dataframe(spark, size=50)
-dicts = Product.build_dicts(size=100)  # No PySpark needed
+# Create your SparkSession
+spark = SparkSession.builder.appName("example").getOrCreate()
+
+# Generate a DataFrame with 100 rows
+df = Product.build_dataframe(spark, size=100)
+df.show(5)
 ```
 
-**Benefits:**
-- ✅ Single decorator instead of separate factory class
-- ✅ Methods live on your model where they're discoverable
-- ✅ Works with dataclasses, Pydantic, and TypedDicts
-- ✅ Cleaner, more Pythonic code
+**Output:**
+```
++----------+------------------+-------+--------------------+--------+
+|product_id|              name|  price|         description|in_stock|
++----------+------------------+-------+--------------------+--------+
+|    724891|Central Public ...|1842.32|       Patient sc...|    true|
+|    193847|Message Total F...|7249.17|                null|    true|
+|    847291|Current Certain...|3891.04|       Tonight op...|   false|
++----------+------------------+-------+--------------------+--------+
+```
 
-### Basic Usage
+### Classic Factory Pattern
 
-#### Using Factory Classes
+For advanced use cases, create a dedicated factory class:
 
 ```python
-from dataclasses import dataclass
 from polyspark import SparkFactory
-
-@dataclass
-class Product:
-    product_id: int
-    name: str
-    price: float
-    in_stock: bool
 
 class ProductFactory(SparkFactory[Product]):
     __model__ = Product
 
-# Generate DataFrame
-df = ProductFactory.build_dataframe(spark, size=50)
+df = ProductFactory.build_dataframe(spark, size=100)
 ```
 
-#### Using Convenience Function
+## 📚 Usage Guide
+
+### Schema Inference Magic
+
+**The Problem:** When creating DataFrames manually, if all values in a column are `None`, Spark can't infer the type and fails:
 
 ```python
-from polyspark import build_spark_dataframe
-
-df = build_spark_dataframe(Product, spark, size=50)
+# ❌ This can break if all emails are None
+data = [{"id": 1, "email": None}, {"id": 2, "email": None}]
+df = spark.createDataFrame(data)  # Error: Can't infer schema!
 ```
+
+**The Solution:** Polyspark infers schemas from your Python types **before** generating data:
+
+```python
+# ✅ This always works - schema comes from type hints
+@dataclass
+class User:
+    id: int
+    email: Optional[str]  # Spark knows this is a nullable string
+
+df = User.build_dataframe(spark, size=100)  # Schema: id (long), email (string, nullable)
+```
+
+Even if all generated emails happen to be `None`, the DataFrame creation succeeds because **the schema is defined first**.
 
 ### Working Without PySpark
 
-Generate data as dictionaries without PySpark installed:
+Generate data as dictionaries without installing PySpark:
 
 ```python
-# No PySpark required for this
-dicts = ProductFactory.build_dicts(size=100)
+# No PySpark installation required!
+dicts = Product.build_dicts(size=1000)
 
-# Later, convert to DataFrame when you have PySpark
-df = ProductFactory.create_dataframe_from_dicts(spark, dicts)
+# Use the data however you want
+import pandas as pd
+pandas_df = pd.DataFrame(dicts)
+
+# Later, convert to Spark DataFrame when needed
+spark_df = Product.create_dataframe_from_dicts(spark, dicts)
 ```
 
 ### Pydantic Models
 
-```python
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+Full support for Pydantic v2 with validation:
 
+```python
+from pydantic import BaseModel, EmailStr, Field
+
+@spark_factory
 class User(BaseModel):
-    id: int
-    username: str
+    id: int = Field(gt=0, description="User ID")
+    username: str = Field(min_length=3, max_length=20)
     email: EmailStr
-    full_name: Optional[str] = None
+    age: int = Field(ge=18, le=120)
     is_active: bool = True
 
-class UserFactory(SparkFactory[User]):
-    __model__ = User
-
-df = UserFactory.build_dataframe(spark, size=100)
+# Generate valid data according to your constraints
+df = User.build_dataframe(spark, size=500)
 ```
 
-### Complex Types
+### Complex Nested Structures
 
 #### Nested Structs
 
 ```python
-from dataclasses import dataclass
-from typing import List
-
+@spark_factory
 @dataclass
 class Address:
     street: str
     city: str
     state: str
     zipcode: str
+    country: str = "USA"
 
+@spark_factory
 @dataclass
 class Employee:
     employee_id: int
     name: str
+    email: str
     address: Address  # Nested struct
-    skills: List[str]  # Array type
+    department: str
 
-class EmployeeFactory(SparkFactory[Employee]):
-    __model__ = Employee
+# Generates nested StructType automatically
+df = Employee.build_dataframe(spark, size=100)
 
-df = EmployeeFactory.build_dataframe(spark, size=50)
-
-# Access nested fields
+# Query nested fields
 df.select("name", "address.city", "address.state").show()
 ```
 
-#### Maps and Arrays
+#### Arrays and Maps
 
 ```python
 from typing import Dict, List
 
+@spark_factory
 @dataclass
 class Product:
     product_id: int
     name: str
-    attributes: Dict[str, str]  # Map type
-    tags: List[str]  # Array type
-    prices_by_region: Dict[str, float]  # Map with float values
+    tags: List[str]  # ArrayType(StringType())
+    attributes: Dict[str, str]  # MapType(StringType(), StringType())
+    prices_by_region: Dict[str, float]  # MapType(StringType(), DoubleType())
+    related_products: List[int]  # ArrayType(LongType())
 
-class ProductFactory(SparkFactory[Product]):
-    __model__ = Product
+df = Product.build_dataframe(spark, size=50)
 
-df = ProductFactory.build_dataframe(spark, size=30)
+# Work with arrays
+df.select("name", explode("tags").alias("tag")).show()
 ```
 
 #### Array of Structs
@@ -216,249 +228,340 @@ df = ProductFactory.build_dataframe(spark, size=30)
 @dataclass
 class Project:
     project_id: int
-    project_name: str
+    name: str
     budget: float
+    start_date: datetime
 
+@spark_factory
 @dataclass
 class Department:
     dept_id: int
     dept_name: str
-    projects: List[Project]  # Array of structs
+    manager: str
+    projects: List[Project]  # ArrayType(StructType(...))
 
-class DepartmentFactory(SparkFactory[Department]):
-    __model__ = Department
+df = Department.build_dataframe(spark, size=20)
 
-df = DepartmentFactory.build_dataframe(spark, size=10)
+# Explode nested array of structs
+df.select("dept_name", explode("projects").alias("project")).show()
 ```
 
-### Explicit Schemas
+### Explicit Schema Override
 
-You can provide explicit PySpark schemas:
+Override inferred schema when needed:
 
 ```python
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+from pyspark.sql.types import StructType, StructField, IntegerType, StringType
 
-# Define explicit schema
-schema = StructType([
-    StructField("id", IntegerType(), False),
-    StructField("name", StringType(), True),
-    StructField("email", StringType(), True),
+# Define custom schema
+custom_schema = StructType([
+    StructField("id", IntegerType(), nullable=False),
+    StructField("name", StringType(), nullable=False),
+    StructField("email", StringType(), nullable=True),
 ])
 
-df = UserFactory.build_dataframe(spark, size=100, schema=schema)
+# Use custom schema instead of inferred one
+df = User.build_dataframe(spark, size=100, schema=custom_schema)
 ```
 
-### Optional Types
+### Optional and Union Types
 
-Optional fields are automatically handled:
+Automatic nullable field handling:
 
 ```python
-from typing import Optional
+from typing import Optional, Union
 
+@spark_factory
 @dataclass
-class User:
-    id: int
+class UserProfile:
+    user_id: int
     username: str
-    nickname: Optional[str]  # Automatically nullable in schema
+    nickname: Optional[str]  # nullable=True in schema
     bio: Optional[str] = None
+    age: Optional[int] = None
+    # Union types work too (uses first type)
+    contact: Union[str, int] = ""
 
-class UserFactory(SparkFactory[User]):
-    __model__ = User
-
-df = UserFactory.build_dataframe(spark, size=50)
+df = UserProfile.build_dataframe(spark, size=200)
 ```
 
-## Supported Types
+## 🔧 Advanced Features
+
+### Custom Polyfactory Configuration
+
+Pass any polyfactory arguments:
+
+```python
+from datetime import datetime
+
+@spark_factory
+@dataclass
+class Event:
+    event_id: int
+    name: str
+    timestamp: datetime
+    status: str
+
+# Customize data generation
+df = Event.build_dataframe(
+    spark,
+    size=1000,
+    __set_as_default_factory_key__=True,
+    # Pass any polyfactory kwargs
+)
+```
+
+### Decorator with Pydantic
+
+```python
+from pydantic import BaseModel
+
+@spark_factory
+class Order(BaseModel):
+    order_id: int
+    customer_id: int
+    total: float
+    items: List[str]
+
+# Works exactly the same!
+df = Order.build_dataframe(spark, size=500)
+```
+
+### Convenience Function
+
+Skip the decorator for quick one-offs:
+
+```python
+from polyspark import build_spark_dataframe
+
+@dataclass
+class SimpleModel:
+    id: int
+    value: str
+
+# Generate directly without decorator or factory class
+df = build_spark_dataframe(SimpleModel, spark, size=100)
+```
+
+## 📊 Type Mapping Reference
 
 ### Basic Types
 
-| Python Type | PySpark Type |
-|-------------|--------------|
-| `str` | `StringType` |
-| `int` | `LongType` |
-| `float` | `DoubleType` |
-| `bool` | `BooleanType` |
-| `bytes` / `bytearray` | `BinaryType` |
-| `datetime.date` | `DateType` |
-| `datetime.datetime` | `TimestampType` |
-| `decimal.Decimal` | `DecimalType` |
+| Python Type          | PySpark Type      | Nullable by Default |
+| -------------------- | ----------------- | ------------------- |
+| `str`                | `StringType`      | ❌                  |
+| `int`                | `LongType`        | ❌                  |
+| `float`              | `DoubleType`      | ❌                  |
+| `bool`               | `BooleanType`     | ❌                  |
+| `bytes` / `bytearray`| `BinaryType`      | ❌                  |
+| `datetime.date`      | `DateType`        | ❌                  |
+| `datetime.datetime`  | `TimestampType`   | ❌                  |
+| `decimal.Decimal`    | `DecimalType`     | ❌                  |
 
 ### Complex Types
 
-| Python Type | PySpark Type |
-|-------------|--------------|
-| `List[T]` | `ArrayType` |
-| `Dict[K, V]` | `MapType` |
-| Dataclass / Pydantic | `StructType` |
-| `Optional[T]` | Nullable field |
+| Python Type                | PySpark Type                      |
+| -------------------------- | --------------------------------- |
+| `List[T]`                  | `ArrayType(T)`                    |
+| `Dict[K, V]`               | `MapType(K, V)`                   |
+| `Optional[T]`              | `T` (nullable=True)               |
+| Dataclass / Pydantic Model | `StructType(...)`                 |
+| `Union[T, None]`           | `T` (nullable=True)               |
 
-### Nested Types
+### Nested Combinations
 
-Any combination of the above types is supported:
-- `List[List[int]]` → `ArrayType(ArrayType(LongType()))`
+Any combination of types is supported:
+
+- `List[List[str]]` → `ArrayType(ArrayType(StringType()))`
 - `Dict[str, List[int]]` → `MapType(StringType(), ArrayType(LongType()))`
 - `List[MyDataclass]` → `ArrayType(StructType(...))`
+- `Optional[Dict[str, float]]` → Nullable `MapType(StringType(), DoubleType())`
 
-## API Reference
+## 📖 API Reference
 
-### `SparkFactory`
+### Decorator: `@spark_factory`
 
-The main factory class for generating DataFrames.
+Adds DataFrame generation methods to your model class.
+
+```python
+@spark_factory
+@dataclass
+class MyModel:
+    field: str
+
+# Adds these methods:
+MyModel.build_dataframe(spark, size=10, schema=None, **kwargs)
+MyModel.build_dicts(size=10, **kwargs)
+MyModel.create_dataframe_from_dicts(spark, data, schema=None)
+```
+
+### Class: `SparkFactory[T]`
+
+Base factory class for advanced use cases.
 
 #### Methods
 
-##### `build_dataframe(spark, size=10, schema=None, **kwargs)`
+**`build_dataframe(spark, size=10, schema=None, **kwargs) -> DataFrame`**
 
-Generate a PySpark DataFrame.
-
-**Parameters:**
-- `spark` (SparkSession): SparkSession instance
-- `size` (int): Number of rows to generate (default: 10)
-- `schema` (Optional): Explicit schema (StructType) or list of column names
-- `**kwargs`: Additional arguments passed to polyfactory
-
-**Returns:** PySpark DataFrame
-
-**Raises:** `PySparkNotAvailableError` if PySpark is not installed
-
-##### `build_dicts(size=10, **kwargs)`
-
-Generate a list of dictionaries (no PySpark required).
+Generate a PySpark DataFrame with typed data.
 
 **Parameters:**
-- `size` (int): Number of records to generate
-- `**kwargs`: Additional arguments passed to polyfactory
-
-**Returns:** List[Dict[str, Any]]
-
-##### `create_dataframe_from_dicts(spark, data, schema=None)`
-
-Convert pre-generated dictionaries to a DataFrame.
-
-**Parameters:**
-- `spark` (SparkSession): SparkSession instance
-- `data` (List[Dict]): List of dictionaries to convert
-- `schema` (Optional): Explicit schema
-
-**Returns:** PySpark DataFrame
-
-### `build_spark_dataframe(model, spark, size=10, schema=None, **kwargs)`
-
-Convenience function to build a DataFrame without creating a factory class.
-
-**Parameters:**
-- `model` (Type): Model type (dataclass, Pydantic, TypedDict)
-- `spark` (SparkSession): SparkSession instance
+- `spark` (SparkSession): Active Spark session
 - `size` (int): Number of rows to generate
-- `schema` (Optional): Explicit schema
-- `**kwargs`: Additional arguments for data generation
+- `schema` (Optional[StructType | List[str]]): Custom schema or column names
+- `**kwargs`: Additional polyfactory arguments
 
 **Returns:** PySpark DataFrame
+
+**`build_dicts(size=10, **kwargs) -> List[Dict[str, Any]]`**
+
+Generate data as dictionaries (no PySpark required).
+
+**Parameters:**
+- `size` (int): Number of records
+- `**kwargs`: Additional polyfactory arguments
+
+**Returns:** List of dictionaries
+
+**`create_dataframe_from_dicts(spark, data, schema=None) -> DataFrame`**
+
+Convert dictionaries to DataFrame with inferred schema.
+
+**Parameters:**
+- `spark` (SparkSession): Active Spark session
+- `data` (List[Dict]): Data to convert
+- `schema` (Optional[StructType]): Optional custom schema
+
+**Returns:** PySpark DataFrame
+
+### Function: `build_spark_dataframe`
+
+```python
+build_spark_dataframe(model, spark, size=10, schema=None, **kwargs) -> DataFrame
+```
+
+Convenience function to generate DataFrame without decorator or factory class.
 
 ### Schema Utilities
 
-#### `python_type_to_spark_type(python_type, nullable=True)`
+#### `infer_schema(model, schema=None) -> StructType`
 
-Convert a Python type to a PySpark DataType.
+Infer PySpark schema from model type.
 
-#### `dataclass_to_struct_type(dataclass_type)`
+#### `python_type_to_spark_type(python_type, nullable=True) -> DataType`
 
-Convert a dataclass to a PySpark StructType.
+Convert Python type to PySpark DataType.
 
-#### `pydantic_to_struct_type(model_type)`
+#### `dataclass_to_struct_type(dataclass_type) -> StructType`
 
-Convert a Pydantic model to a PySpark StructType.
+Convert dataclass to StructType.
 
-#### `infer_schema(model, schema=None)`
+#### `pydantic_to_struct_type(model_type) -> StructType`
 
-Infer or validate a PySpark schema from a model type.
+Convert Pydantic model to StructType.
 
-### Runtime Checks
+### Runtime Utilities
 
-#### `is_pyspark_available()`
+#### `is_pyspark_available() -> bool`
 
-Check if PySpark is available at runtime.
+Check if PySpark is installed and available.
 
-**Returns:** bool
+## 🧪 Testing
 
-## Examples
-
-Check out the [examples/](examples/) directory for complete examples:
-
-- [basic_usage.py](examples/basic_usage.py) - Simple dataclass usage
-- [pydantic_models.py](examples/pydantic_models.py) - Using Pydantic models
-- [complex_types.py](examples/complex_types.py) - Arrays, maps, nested structs
-- [direct_schema.py](examples/direct_schema.py) - Using PySpark schemas directly
-
-## Testing
-
-Polyspark uses pytest for testing. To run the tests:
+Run the test suite:
 
 ```bash
-# Install with dev dependencies
-pip install polyspark[dev]
+# Install dev dependencies
+pip install "polyspark[dev]"
 
-# Run tests
+# Run all tests
 pytest
 
 # Run with coverage
 pytest --cov=polyspark --cov-report=html
+
+# Run specific test file
+pytest tests/test_factory.py -v
 ```
 
-## Why Polyspark?
+## 💡 Examples
 
-When developing PySpark applications, you often need test data. Creating realistic test DataFrames manually is tedious and error-prone. Polyspark combines the power of polyfactory's data generation with PySpark's DataFrame API.
+Explore complete examples in the [`examples/`](https://github.com/eddiethedean/polyspark/tree/main/examples) directory:
 
-### Key Benefits
+- **[basic_usage.py](https://github.com/eddiethedean/polyspark/blob/main/examples/basic_usage.py)** - Getting started with dataclasses
+- **[decorator_usage.py](https://github.com/eddiethedean/polyspark/blob/main/examples/decorator_usage.py)** - Using the `@spark_factory` decorator
+- **[pydantic_models.py](https://github.com/eddiethedean/polyspark/blob/main/examples/pydantic_models.py)** - Pydantic model integration
+- **[complex_types.py](https://github.com/eddiethedean/polyspark/blob/main/examples/complex_types.py)** - Arrays, maps, and nested structures
+- **[direct_schema.py](https://github.com/eddiethedean/polyspark/blob/main/examples/direct_schema.py)** - Explicit PySpark schema usage
 
-1. **Type Safety**: Define your schema once using Python types
-2. **Consistency**: Same data models for application code and tests
-3. **Flexibility**: Works with dataclasses, Pydantic, and TypedDicts
-4. **No Vendor Lock-in**: PySpark is not a hard dependency
-5. **Rich Data**: Leverages polyfactory's sophisticated data generation
-6. **Testing**: Perfect for unit tests, integration tests, and development
+## 🐛 Troubleshooting
 
-## How It Works
+### "PySpark not available" Error
 
-Polyspark uses Python protocols to define PySpark interfaces without importing PySpark. This allows:
+```python
+# Make sure PySpark is installed
+pip install pyspark
 
-1. Schema inference from Python type hints
-2. Type-safe DataFrame generation
-3. Graceful degradation when PySpark is not installed
-4. No hard dependency on PySpark
+# Or use build_dicts() which doesn't need PySpark
+dicts = MyModel.build_dicts(size=100)
+```
 
-The schema inference engine converts Python types to PySpark types:
-- Type hints → PySpark schema
-- polyfactory generates data → List of dicts
-- PySpark creates DataFrame from dicts + schema
+### Schema Inference Issues
 
-## Requirements
+If schema inference fails, provide an explicit schema:
 
-- Python 3.8+
-- polyfactory >= 2.0.0
-- typing-extensions >= 4.0.0
-- PySpark >= 3.0.0 (optional, for DataFrame generation)
+```python
+from pyspark.sql.types import StructType, StructField, StringType
 
-## Contributing
+schema = StructType([StructField("field", StringType(), True)])
+df = MyModel.build_dataframe(spark, size=100, schema=schema)
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### Type Not Supported
 
-## License
+If you encounter `UnsupportedTypeError`, the type may not have a direct PySpark equivalent. Use a supported type or provide an explicit schema.
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (`pytest`)
+5. Run linting (`ruff check . && black --check .`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+See [CONTRIBUTING.md](https://github.com/eddiethedean/polyspark/blob/main/CONTRIBUTING.md) for detailed guidelines.
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
-- [polyfactory](https://github.com/litestar-org/polyfactory) - The excellent factory library that powers Polyspark
-- [PySpark](https://spark.apache.org/docs/latest/api/python/) - The Python API for Apache Spark
+- **[polyfactory](https://github.com/litestar-org/polyfactory)** - The powerful factory library that powers Polyspark's data generation
+- **[PySpark](https://spark.apache.org/docs/latest/api/python/)** - The Python API for Apache Spark
+- **[Faker](https://github.com/joke2k/faker)** - Realistic fake data generation (used by polyfactory)
 
-## Related Projects
+## 🔗 Related Projects
 
-- [polyfactory](https://github.com/litestar-org/polyfactory) - Simple and powerful factories for mock data generation
-- [PySpark](https://spark.apache.org/docs/latest/api/python/) - Python API for Apache Spark
-- [Faker](https://github.com/joke2k/faker) - Library for generating fake data
+- [polyfactory](https://github.com/litestar-org/polyfactory) - Factory library for mock data
+- [PySpark](https://spark.apache.org/docs/latest/api/python/) - Python API for Apache Spark  
+- [Pydantic](https://docs.pydantic.dev/) - Data validation using Python type annotations
+- [pytest](https://docs.pytest.org/) - Testing framework
 
-## Support
+## 📞 Support
 
-If you encounter any issues or have questions, please [open an issue](https://github.com/odosmatthews/polyspark/issues) on GitHub.
+- 🐛 **Bug Reports**: [Open an issue](https://github.com/eddiethedean/polyspark/issues)
+- 💡 **Feature Requests**: [Start a discussion](https://github.com/eddiethedean/polyspark/discussions)
+- 📖 **Documentation**: [Read the guide](https://github.com/eddiethedean/polyspark#readme)
+- ⭐ **Star us on GitHub** if you find Polyspark helpful!
 
+---
+
+<p align="center">
+  <i>Built with ❤️ for the PySpark community</i>
+</p>
