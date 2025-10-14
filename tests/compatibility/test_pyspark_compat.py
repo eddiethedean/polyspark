@@ -96,8 +96,10 @@ class TestSparkFactoryWithPySpark:
         df = UserFactory.build_dataframe(spark, size=5)
         assert df.count() == 5
         assert "address" in df.columns
-        # Check nested fields
-        assert "address.street" in [f.name for f in df.select("address.*").schema.fields]
+        # Check nested fields - when selecting "address.*", PySpark flattens to local field names
+        assert "street" in [f.name for f in df.select("address.*").schema.fields]
+        assert "city" in [f.name for f in df.select("address.*").schema.fields]
+        assert "zipcode" in [f.name for f in df.select("address.*").schema.fields]
 
     def test_build_dataframe_with_list(self, spark):
         """Test building DataFrame with list fields."""

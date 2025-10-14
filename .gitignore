@@ -153,8 +153,7 @@ derby.log
 spark-warehouse/
 
 # Polyspark specific
-.venv38/
-.venv38-mockspark/
+.venv*/
 benchmarks/
 .benchmarks/
 
