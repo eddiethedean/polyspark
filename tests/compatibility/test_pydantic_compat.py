@@ -16,51 +16,56 @@ try:
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
+    BaseModel = None  # type: ignore[assignment, misc]
+    Field = None  # type: ignore[assignment, misc]
 
 pytestmark = pytest.mark.skipif(not PYDANTIC_AVAILABLE, reason="Pydantic not installed")
 
+if PYDANTIC_AVAILABLE:
 
-class PydanticUser(BaseModel):
-    """Test Pydantic model."""
+    class PydanticUser(BaseModel):
+        """Test Pydantic model."""
 
-    id: int
-    name: str
-    email: str
+        id: int
+        name: str
+        email: str
 
+    class PydanticUserWithOptional(BaseModel):
+        """Test Pydantic model with optional fields."""
 
-class PydanticUserWithOptional(BaseModel):
-    """Test Pydantic model with optional fields."""
+        id: int
+        username: str
+        nickname: Optional[str] = None
+        age: Optional[int] = None
 
-    id: int
-    username: str
-    nickname: Optional[str] = None
-    age: Optional[int] = None
+    class PydanticProduct(BaseModel):
+        """Test Pydantic model with validation."""
 
+        product_id: int = Field(gt=0)
+        name: str = Field(min_length=1, max_length=100)
+        price: float = Field(gt=0)
+        tags: List[str] = Field(default_factory=list)
 
-class PydanticProduct(BaseModel):
-    """Test Pydantic model with validation."""
+    class PydanticAddress(BaseModel):
+        """Test Pydantic model for nested structure."""
 
-    product_id: int = Field(gt=0)
-    name: str = Field(min_length=1, max_length=100)
-    price: float = Field(gt=0)
-    tags: List[str] = Field(default_factory=list)
+        street: str
+        city: str
+        zipcode: str
+        country: str = "USA"
 
+    class PydanticUserWithAddress(BaseModel):
+        """Test Pydantic model with nested Pydantic model."""
 
-class PydanticAddress(BaseModel):
-    """Test Pydantic model for nested structure."""
+        id: int
+        name: str
+        address: PydanticAddress
 
-    street: str
-    city: str
-    zipcode: str
-    country: str = "USA"
-
-
-class PydanticUserWithAddress(BaseModel):
-    """Test Pydantic model with nested Pydantic model."""
-
-    id: int
-    name: str
-    address: PydanticAddress
+    @spark_factory
+    class DecoratedPydanticUser(BaseModel):
+        id: int
+        name: str
+        email: str
 
 
 class TestPydanticWithSchemaInference:
@@ -170,12 +175,6 @@ class TestPydanticWithFactory:
 
 class TestPydanticWithDecorator:
     """Test Pydantic models with @spark_factory decorator."""
-
-    @spark_factory
-    class DecoratedPydanticUser(BaseModel):
-        id: int
-        name: str
-        email: str
 
     def test_decorated_pydantic_build_dicts(self):
         """Test decorated Pydantic model can build dicts."""
