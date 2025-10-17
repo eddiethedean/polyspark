@@ -61,12 +61,18 @@ class RowProtocol(Protocol):
         """Convert row to dictionary."""
         ...
 
+    def __getitem__(self, key: Union[int, str]) -> Any:
+        """Get item by index or key."""
+        ...
+
 
 @runtime_checkable
 class DataFrameProtocol(Protocol):
     """Protocol matching PySpark DataFrame interface."""
 
     schema: StructTypeProtocol
+    columns: List[str]
+    dtypes: List[Any]
 
     def show(self, n: int = 20, truncate: Union[bool, int] = True, vertical: bool = False) -> None:
         """Display the DataFrame."""
@@ -88,6 +94,35 @@ class DataFrameProtocol(Protocol):
         """Convert to pandas DataFrame."""
         ...
 
+    def select(self, *cols: Any) -> Self:
+        """Select columns."""
+        ...
+
+    def filter(self, condition: Any) -> Self:
+        """Filter rows."""
+        ...
+
+    def orderBy(self, *cols: Any, **kwargs: Any) -> Self:
+        """Order by columns."""
+        ...
+
+    def distinct(self) -> Self:
+        """Return distinct rows."""
+        ...
+
+    def dropDuplicates(self, subset: Optional[List[str]] = None) -> Self:
+        """Drop duplicate rows."""
+        ...
+
+    def describe(self, *cols: Any) -> Self:
+        """Generate descriptive statistics."""
+        ...
+
+    @property
+    def write(self) -> Any:
+        """DataFrameWriter for saving."""
+        ...
+
 
 @runtime_checkable
 class SparkSessionProtocol(Protocol):
@@ -99,6 +134,11 @@ class SparkSessionProtocol(Protocol):
         schema: Optional[Union[StructTypeProtocol, List[str]]] = None,
     ) -> DataFrameProtocol:
         """Create a DataFrame from data."""
+        ...
+
+    @property
+    def read(self) -> Any:
+        """DataFrameReader for loading data."""
         ...
 
 

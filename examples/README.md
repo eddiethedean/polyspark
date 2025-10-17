@@ -18,6 +18,8 @@ pip install pydantic
 
 ## Examples
 
+### Core Examples
+
 ### 1. Decorator Usage (`decorator_usage.py`) - **START HERE!**
 
 The easiest way to use polyspark - just add one decorator!
@@ -86,6 +88,72 @@ Run:
 ```bash
 python examples/direct_schema.py
 ```
+
+### Advanced Examples
+
+### 6. Testing Patterns (`testing_patterns.py`) ⭐ NEW
+
+Comprehensive testing patterns for Spark transformations:
+- Unit testing Spark jobs
+- Integration testing with multiple DataFrames
+- Testing with known values
+- Schema validation patterns
+- Edge case testing
+- DataFrame equality assertions
+- Test fixture patterns
+
+Run:
+```bash
+python examples/testing_patterns.py
+```
+
+**What you'll learn:**
+- How to test Spark transformations effectively
+- Using `assert_dataframe_equal()` and other testing utilities
+- Creating reusable test fixtures
+- Testing edge cases (empty DataFrames, single rows, large datasets)
+
+### 7. Custom Providers (`custom_providers.py`) ⭐ NEW
+
+Create custom data providers for realistic test data:
+- Custom email generation (domain-based)
+- Realistic address generation (valid US cities/states/zipcodes)
+- Related data with referential integrity
+- Time-series data generation
+- Business constraint enforcement (role-based salaries)
+
+Run:
+```bash
+python examples/custom_providers.py
+```
+
+**What you'll learn:**
+- How to override factory methods for custom data
+- Creating relationships between entities
+- Enforcing business rules in test data
+- Generating realistic domain-specific data
+
+### 8. Production Usage (`production_usage.py`) ⭐ NEW
+
+Production-ready patterns for real-world use:
+- Large-scale data generation (100K+ rows)
+- Partitioned data creation for query optimization
+- Data quality validation workflows
+- Performance optimization techniques
+- Schema evolution simulation
+- Complete end-to-end production workflows
+
+Run:
+```bash
+python examples/production_usage.py
+```
+
+**What you'll learn:**
+- Generating large datasets efficiently
+- Partitioning strategies for better performance
+- Data quality checks and validation
+- Performance optimization (caching, coalescing, broadcast joins)
+- Handling schema evolution
 
 ## Common Patterns
 

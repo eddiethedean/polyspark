@@ -226,23 +226,36 @@ def infer_ddl_schema(model: Type) -> str:
 
 
 def python_type_to_spark_type(python_type: Type, nullable: bool = True) -> Any:
-    """Convert a Python type to a PySpark DataType.
+    """Convert a Python type to a PySpark DataType or DDL string.
+
+    This function gracefully handles cases where PySpark is not installed by
+    returning a DDL type string instead of a PySpark DataType object.
 
     Args:
         python_type: The Python type to convert.
-        nullable: Whether the field should be nullable.
+        nullable: Whether the field should be nullable (ignored for DDL).
 
     Returns:
-        A PySpark DataType instance.
+        - PySpark DataType instance if PySpark is available
+        - DDL type string if PySpark is not available
 
     Raises:
         UnsupportedTypeError: If the type cannot be converted.
-        PySparkNotAvailableError: If PySpark is not installed.
+
+    Example:
+        ```python
+        # With PySpark installed
+        spark_type = python_type_to_spark_type(str)
+        # Returns: StringType()
+
+        # Without PySpark installed
+        ddl_type = python_type_to_spark_type(str)
+        # Returns: "string"
+        ```
     """
     if not is_pyspark_available():
-        from polyspark.exceptions import PySparkNotAvailableError
-
-        raise PySparkNotAvailableError()
+        # Gracefully degrade to DDL type string
+        return python_type_to_ddl_type(python_type)
 
     pyspark_types = get_pyspark_types()
     assert pyspark_types is not None  # Type guard for mypy

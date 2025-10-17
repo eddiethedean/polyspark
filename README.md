@@ -37,7 +37,10 @@ df = User.build_dataframe(spark, size=1000)
 - 🌳 **Complex Types**: Full support for nested structs, arrays, maps, and unions
 - 🎨 **Flexible Models**: Works with dataclasses, Pydantic models, and TypedDicts
 - 🚀 **Simple API**: One decorator and you're done
-- 📦 **Production Ready**: Comprehensive test coverage and CI/CD
+- 🧪 **Testing Utilities**: DataFrame comparison, schema validation, and assertion helpers
+- 💾 **Data I/O**: Save and load DataFrames in Parquet, JSON, and CSV formats
+- 🖥️ **CLI Tool**: Command-line interface for schema operations and data generation
+- 📦 **Production Ready**: 258 tests, 100% handler coverage, comprehensive CI/CD
 
 ## 📦 Installation
 
@@ -377,6 +380,131 @@ Any combination of types is supported:
 - `List[MyDataclass]` → `ArrayType(StructType(...))`
 - `Optional[Dict[str, float]]` → Nullable `MapType(StringType(), DoubleType())`
 
+## 🧪 Testing Utilities
+
+Polyspark includes powerful utilities for testing Spark transformations:
+
+### DataFrame Assertions
+
+```python
+from polyspark import (
+    assert_dataframe_equal,
+    assert_schema_equal,
+    assert_approx_count,
+    assert_column_exists,
+    assert_no_duplicates,
+    get_column_stats
+)
+
+# Compare DataFrames (with tolerance for floats)
+assert_dataframe_equal(df1, df2, check_order=False, rtol=1e-5)
+
+# Compare schemas
+assert_schema_equal(schema1, schema2, check_nullable=True)
+
+# Validate row count (with tolerance)
+assert_approx_count(df, expected_count=1000, tolerance=0.1)
+
+# Check columns exist
+assert_column_exists(df, "user_id", "name", "email")
+
+# Check for duplicates
+assert_no_duplicates(df, columns=["user_id"])
+
+# Get column statistics
+stats = get_column_stats(df, "amount")
+print(f"Mean: {stats['mean']}, Distinct: {stats['distinct_count']}")
+```
+
+See `examples/testing_patterns.py` for comprehensive testing patterns.
+
+## 💾 Data I/O Utilities
+
+Save and load DataFrames with ease:
+
+```python
+from polyspark import (
+    save_as_parquet,
+    save_as_json,
+    save_as_csv,
+    load_parquet,
+    load_and_validate
+)
+
+# Generate data
+df = User.build_dataframe(spark, size=1000)
+
+# Save with partitioning
+save_as_parquet(df, "users.parquet", partition_by="date")
+
+# Save to JSON or CSV
+save_as_json(df, "users.json")
+save_as_csv(df, "users.csv", header=True)
+
+# Load and validate against schema
+from polyspark import infer_schema
+
+expected_schema = infer_schema(User)
+df = load_and_validate(spark, "users.parquet", expected_schema=expected_schema)
+```
+
+**Without PySpark:**
+
+```python
+from polyspark import save_dicts_as_json, load_dicts_from_json
+
+# Generate and save without PySpark
+dicts = User.build_dicts(size=100)
+save_dicts_as_json(dicts, "users.jsonl")
+
+# Load later
+loaded = load_dicts_from_json("users.jsonl")
+```
+
+## 🖥️ CLI Tool
+
+Polyspark includes a command-line interface for common operations:
+
+### Export Schema
+
+```bash
+# Export schema as DDL string
+polyspark schema export myapp.models:User
+
+# Save to file
+polyspark schema export myapp.models:User --output user_schema.ddl
+```
+
+### Validate Data
+
+```bash
+# Validate data file against model schema
+polyspark schema validate myapp.models:User data.parquet
+polyspark schema validate myapp.models:Product data.json
+```
+
+### Generate Test Data
+
+```bash
+# Generate and save test data
+polyspark generate myapp.models:User --size 1000 --output users.parquet
+polyspark generate myapp.models:Product --size 500 --format json --output products.json
+polyspark generate myapp.models:Order --size 10000 --format csv --output orders.csv
+```
+
+**Example CLI Usage:**
+
+```bash
+# 1. Export schema for documentation
+polyspark schema export myapp.models:Transaction --output transaction_schema.ddl
+
+# 2. Generate test data for local development
+polyspark generate myapp.models:Transaction --size 10000 --output test_data.parquet
+
+# 3. Validate data before deployment
+polyspark schema validate myapp.models:Transaction production_data.parquet
+```
+
 ## 📖 API Reference
 
 ### Decorator: `@spark_factory`
@@ -488,11 +616,17 @@ pytest tests/test_factory.py -v
 
 Explore complete examples in the [`examples/`](https://github.com/eddiethedean/polyspark/tree/main/examples) directory:
 
+### Core Examples
 - **[basic_usage.py](https://github.com/eddiethedean/polyspark/blob/main/examples/basic_usage.py)** - Getting started with dataclasses
 - **[decorator_usage.py](https://github.com/eddiethedean/polyspark/blob/main/examples/decorator_usage.py)** - Using the `@spark_factory` decorator
 - **[pydantic_models.py](https://github.com/eddiethedean/polyspark/blob/main/examples/pydantic_models.py)** - Pydantic model integration
 - **[complex_types.py](https://github.com/eddiethedean/polyspark/blob/main/examples/complex_types.py)** - Arrays, maps, and nested structures
 - **[direct_schema.py](https://github.com/eddiethedean/polyspark/blob/main/examples/direct_schema.py)** - Explicit PySpark schema usage
+
+### Advanced Examples
+- **[testing_patterns.py](https://github.com/eddiethedean/polyspark/blob/main/examples/testing_patterns.py)** ⭐ NEW - Unit testing, integration testing, and test fixtures
+- **[custom_providers.py](https://github.com/eddiethedean/polyspark/blob/main/examples/custom_providers.py)** ⭐ NEW - Custom data generation for realistic test data
+- **[production_usage.py](https://github.com/eddiethedean/polyspark/blob/main/examples/production_usage.py)** ⭐ NEW - Large-scale generation, partitioning, and performance optimization
 
 ## 🐛 Troubleshooting
 

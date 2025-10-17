@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "polyspark"
-version = "0.3.0"
+version = "0.4.0"
 description = "Generate PySpark DataFrames using polyfactory for testing and development"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -47,6 +47,9 @@ Homepage = "https://github.com/odosmatthews/polyspark"
 Documentation = "https://github.com/odosmatthews/polyspark#readme"
 Repository = "https://github.com/odosmatthews/polyspark"
 Issues = "https://github.com/odosmatthews/polyspark/issues"
+
+[project.scripts]
+polyspark = "polyspark.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["polyspark"]

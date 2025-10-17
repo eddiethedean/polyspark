@@ -89,3 +89,30 @@ class TestWithoutPyspark:
             Exception, match="Column 'invalid_field' not found"
         ):  # Should raise SchemaInferenceError
             infer_schema(SimpleModel, schema=["id", "name", "invalid_field"])
+
+    @patch("polyspark.schema.is_pyspark_available", return_value=False)
+    def test_python_type_to_spark_type_graceful_degradation(self, mock_check):
+        """python_type_to_spark_type should return DDL when PySpark unavailable."""
+        from typing import Dict, List
+
+        from polyspark.schema import python_type_to_spark_type
+
+        # Should return DDL type string instead of raising error
+        result = python_type_to_spark_type(str)
+        assert isinstance(result, str)
+        assert result == "string"
+
+        # Test with int
+        result = python_type_to_spark_type(int)
+        assert isinstance(result, str)
+        assert result == "long"
+
+        # Test with complex type
+        result = python_type_to_spark_type(List[str])
+        assert isinstance(result, str)
+        assert result == "array<string>"
+
+        # Test with dict
+        result = python_type_to_spark_type(Dict[str, int])
+        assert isinstance(result, str)
+        assert result == "map<string,long>"

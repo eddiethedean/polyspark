@@ -16,6 +16,14 @@ def spark_session():
     if not PYSPARK_AVAILABLE:
         pytest.skip("PySpark not available")
 
+    # Stop any existing sessions first to ensure clean state
+    try:
+        active_session = SparkSession.getActiveSession()
+        if active_session:
+            active_session.stop()
+    except Exception:
+        pass
+
     spark = (
         SparkSession.builder.appName("polyspark-tests")
         .master("local[1]")
@@ -27,7 +35,11 @@ def spark_session():
 
     yield spark
 
-    spark.stop()
+    # Clean up at the very end of the test session
+    try:
+        spark.stop()
+    except Exception:
+        pass
 
 
 @pytest.fixture
