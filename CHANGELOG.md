@@ -26,9 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `polyspark generate` - Generate and save test data
 - **Comprehensive Test Suite** - Significantly improved test coverage
   - 100% coverage for handlers module (was 0%)
+  - 81% coverage for CLI module (was 0%)
+  - 38% coverage for I/O module (was 0%)
   - Edge case tests for deeply nested structures, large schemas, Unicode
   - Integration tests for end-to-end workflows
-  - 136+ test cases covering all functionality
+  - CLI and I/O module tests (34 new tests)
+  - 190+ test cases covering all functionality
 - **New Examples**
   - `testing_patterns.py` - Unit testing, integration testing, fixtures
   - `custom_providers.py` - Custom data generation patterns

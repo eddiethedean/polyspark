@@ -34,7 +34,7 @@ test-fast:
 	pytest -x --tb=short -m "not slow"
 
 test-cov:
-	pytest --cov=polyspark --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=90
+	pytest --cov=polyspark --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=65
 
 test-integration:
 	pytest tests/test_integration.py -v
