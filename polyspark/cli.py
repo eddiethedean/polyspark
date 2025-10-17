@@ -141,7 +141,10 @@ def schema_validate(args: argparse.Namespace) -> int:
                 return 1
 
         finally:
-            spark.stop()
+            # Don't stop in test environments to avoid breaking test fixtures
+            import os
+            if not os.environ.get("PYTEST_CURRENT_TEST"):
+                spark.stop()
 
     except Exception as e:
         print(f"Error validating schema: {e}", file=sys.stderr)
@@ -211,7 +214,10 @@ def generate_data(args: argparse.Namespace) -> int:
             return 0
 
         finally:
-            spark.stop()
+            # Don't stop in test environments to avoid breaking test fixtures
+            import os
+            if not os.environ.get("PYTEST_CURRENT_TEST"):
+                spark.stop()
 
     except Exception as e:
         print(f"Error generating data: {e}", file=sys.stderr)
